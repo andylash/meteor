@@ -789,6 +789,8 @@ Fiber(function () {
     }
   }
 
+  var alreadyRefreshed = false;
+
   if (! files.usesWarehouse()) {
     // Running from a checkout
     if (releaseOverride) {
@@ -819,6 +821,7 @@ Fiber(function () {
         // default track. Try syncing, at least.  (This is a pretty unlikely
         // error case, since you should always start with a non-empty catalog.)
         var refreshFailed = !catalog.refreshOrWarn();
+        alreadyRefreshed = true;
         releaseName = release.latestKnown();
       }
       if (!releaseName) {
@@ -874,6 +877,8 @@ Fiber(function () {
 
       // ATTEMPT 3: modern release, troposphere sync needed.
       catalog.refreshOrWarn();
+      alreadyRefreshed = true;
+
       // Try to load the release even if the refresh failed, since it might have
       // failed on a later page than the one we needed.
       try {
@@ -1284,7 +1289,8 @@ commandName + ": You're not in a Meteor project directory.\n" +
   try {
     // Before run, do a package sync if one is configured
     var catalogRefreshStrategy = command.catalogRefresh;
-    if (catalogRefreshStrategy.beforeCommand) {
+    if (!alreadyRefreshed && catalogRefreshStrategy.beforeCommand) {
+      // XXX This buildmessage.capture only exists for showing progress.
       var messages = buildmessage.capture({title: 'Updating package catalog'}, function () {
         catalogRefreshStrategy.beforeCommand();
       });
